@@ -1,5 +1,5 @@
 """
-MultiTool GUI v2.0 - By Sobing4413
+MultiTool GUI v2.1.0 - By Sobing4413
 Premium dark GUI menggunakan CustomTkinter
 Install dulu: pip install customtkinter psutil requests pillow
 """
@@ -18,7 +18,7 @@ import platform
 try:
     import customtkinter as ctk
     ctk.set_appearance_mode("dark")
-    ctk.set_default_color_theme("blue")
+    ctk.set_default_color_theme("green")
 except ImportError:
     print("[!] customtkinter tidak ditemukan!")
     print("    Install: pip install customtkinter")
@@ -38,27 +38,71 @@ except ImportError:
 # THEME / WARNA
 # ─────────────────────────────────────────────
 COLORS = {
-    "bg_dark":     "#0d1117",
-    "bg_panel":    "#161b22",
-    "bg_card":     "#1c2128",
-    "bg_hover":    "#21262d",
-    "accent":      "#58a6ff",
-    "accent2":     "#3fb950",
-    "accent3":     "#f78166",
-    "accent4":     "#d29922",
-    "text_main":   "#e6edf3",
-    "text_dim":    "#8b949e",
-    "border":      "#30363d",
-    "success":     "#3fb950",
-    "warning":     "#d29922",
-    "error":       "#f78166",
-    "sidebar_sel": "#1f6feb",
+    "bg_dark":     "#080e09",   # very deep forest black
+    "bg_panel":    "#0b1210",   # sidebar dark green-black
+    "bg_card":     "#0f1a12",   # card bg
+    "bg_card2":    "#121f15",   # card alt
+    "bg_hover":    "#172418",   # hover state
+    "accent":      "#4ade80",   # leaf green
+    "accent_glow": "#16a34a",   # deep green glow
+    "accent_soft": "#22c55e",   # mid green
+    "accent2":     "#86efac",   # light green (secondary)
+    "accent3":     "#f87171",   # red (error/danger)
+    "accent4":     "#fbbf24",   # amber (warning)
+    "accent5":     "#a3e635",   # lime (highlight)
+    "text_main":   "#e2f5e6",   # soft green-white
+    "text_dim":    "#5d7a62",   # muted green-grey
+    "text_muted":  "#2e4030",   # very muted
+    "border":      "#1a2e1c",   # subtle border
+    "border2":     "#223424",   # slightly stronger
+    "success":     "#4ade80",
+    "warning":     "#fbbf24",
+    "error":       "#f87171",
+    "sidebar_sel": "#0f2e14",   # selected bg
+    "sidebar_sel2":"#143319",
+    "grad_start":  "#0c1a0e",
+    "grad_end":    "#080e09",
 }
 
-AUTHOR  = "Sobing4413"
-VERSION = "v2.0 GUI"
+AUTHOR  = "Exter Interactive"
+VERSION = "v2.1.0 GUI"
 GITHUB  = "https://github.com/SOBING4413"
 DISCORD = "https://discord.gg/9nsub2yx4V"
+
+# ─────────────────────────────────────────────
+# LOGO LOADER
+# ─────────────────────────────────────────────
+_BASE_DIR  = os.path.dirname(os.path.abspath(__file__))
+_LOGO_PATH = os.path.join(_BASE_DIR, "logo.png")
+
+def _load_logo(size=(40, 40)):
+    """Return CTkImage dari logo.png. None kalau gagal."""
+    try:
+        from PIL import Image
+        img = Image.open(_LOGO_PATH).convert("RGBA").resize(size, Image.LANCZOS)
+        return ctk.CTkImage(light_image=img, dark_image=img, size=size)
+    except Exception:
+        return None
+
+def _load_logo_tk(size=(64, 64)):
+    """Return PhotoImage untuk tkinter Canvas. None kalau gagal."""
+    try:
+        from PIL import Image, ImageTk
+        img = Image.open(_LOGO_PATH).convert("RGBA").resize(size, Image.LANCZOS)
+        return ImageTk.PhotoImage(img)
+    except Exception:
+        return None
+
+def _set_icon(root):
+    """Set window icon dari logo.png. Silent fail."""
+    try:
+        from PIL import Image, ImageTk
+        img = Image.open(_LOGO_PATH).convert("RGBA").resize((32, 32), Image.LANCZOS)
+        photo = ImageTk.PhotoImage(img)
+        root.iconphoto(True, photo)
+        root._icon_ref = photo   # cegah garbage collector
+    except Exception:
+        pass
 
 # ─────────────────────────────────────────────
 # HELPER: jalankan perintah shell
@@ -84,15 +128,19 @@ def is_windows() -> bool:
 # OUTPUT BOX HELPER
 # ─────────────────────────────────────────────
 class OutputBox(ctk.CTkTextbox):
-    """Textbox read-only dengan helper print."""
+    """Textbox read-only dengan helper print — dark premium style."""
 
     def __init__(self, master, **kw):
         super().__init__(
             master,
-            font=("Consolas", 12),
+            font=("Cascadia Code", 12) if os.name == "nt" else ("Monospace", 12),
             text_color=COLORS["text_main"],
-            fg_color=COLORS["bg_dark"],
-            corner_radius=8,
+            fg_color="#060a10",
+            corner_radius=10,
+            border_width=1,
+            border_color=COLORS["border"],
+            scrollbar_button_color=COLORS["border"],
+            scrollbar_button_hover_color=COLORS["border2"],
             wrap="word",
             **kw,
         )
@@ -110,8 +158,8 @@ class OutputBox(ctk.CTkTextbox):
             "warning": COLORS["warning"],
             "error":   COLORS["error"],
             "accent":  COLORS["accent"],
-            "dim":     COLORS["text_dim"],
-            "title":   COLORS["accent"],
+            "dim":     COLORS["text_muted"],
+            "title":   COLORS["accent5"],
         }
         color = color_map.get(tag, COLORS["text_main"])
         self.configure(state="normal")
@@ -137,52 +185,154 @@ class SidebarBtn(ctk.CTkButton):
             master,
             text=label,
             anchor="w",
-            height=38,
-            corner_radius=6,
+            height=40,
+            corner_radius=8,
             fg_color="transparent",
             hover_color=COLORS["bg_hover"],
             text_color=COLORS["text_dim"],
             font=("Segoe UI", 12),
+            border_width=0,
             command=command,
             **kw,
         )
+        self._is_active = False
 
     def set_active(self, active: bool):
+        self._is_active = active
         if active:
             self.configure(
                 fg_color=COLORS["sidebar_sel"],
-                text_color=COLORS["text_main"],
+                text_color=COLORS["accent"],
+                border_width=1,
+                border_color=COLORS["accent_glow"],
             )
         else:
             self.configure(
                 fg_color="transparent",
                 text_color=COLORS["text_dim"],
+                border_width=0,
             )
 
 
 # ─────────────────────────────────────────────
-# STAT CARD (untuk dashboard)
+# ANIMATED PROGRESS BAR
+# ─────────────────────────────────────────────
+class AnimatedProgressBar(tk.Canvas):
+    """Custom animated progress bar with color transitions."""
+
+    def __init__(self, master, width=200, height=6, **kw):
+        super().__init__(master, width=width, height=height,
+                         bg=COLORS["bg_dark"], bd=0, highlightthickness=0, **kw)
+        self._current = 0.0
+        self._target  = 0.0
+        self._width   = width
+        self._height  = height
+        self._animating = False
+        self._draw(0.0)
+
+    def _get_color(self, pct: float) -> str:
+        if pct < 0.5:
+            r = int(52 + (227-52) * (pct / 0.5))
+            g = int(208 - (208-179) * (pct / 0.5))
+            b = int(88  - (88-10) * (pct / 0.5))
+        else:
+            r = int(227 + (249-227) * ((pct-0.5)/0.5))
+            g = int(179 - (179-117) * ((pct-0.5)/0.5))
+            b = int(10)
+        r = max(0, min(255, r))
+        g = max(0, min(255, g))
+        b = max(0, min(255, b))
+        return f"#{r:02x}{g:02x}{b:02x}"
+
+    def _draw(self, pct: float):
+        self.delete("all")
+        # Track
+        self.create_rounded_rect(0, 0, self._width, self._height,
+                                  radius=3, fill=COLORS["border"], outline="")
+        # Fill
+        fill_w = max(0, int(self._width * pct))
+        if fill_w > 0:
+            color = self._get_color(pct)
+            self.create_rounded_rect(0, 0, fill_w, self._height,
+                                      radius=3, fill=color, outline="")
+            # Shine
+            shine_y = max(1, self._height // 3)
+            self.create_rounded_rect(2, 1, max(2, fill_w - 2), shine_y,
+                                      radius=2, fill="#1a5c2e", outline="")
+
+    def create_rounded_rect(self, x1, y1, x2, y2, radius=4, **kw):
+        pts = [x1+radius, y1, x2-radius, y1, x2, y1,
+               x2, y1+radius, x2, y2-radius, x2, y2,
+               x2-radius, y2, x1+radius, y2, x1, y2,
+               x1, y2-radius, x1, y1+radius, x1, y1]
+        self.create_polygon(pts, smooth=True, **kw)
+
+    def set_value(self, pct: float):
+        self._target = max(0.0, min(1.0, pct))
+        if not self._animating:
+            self._animate()
+
+    def _animate(self):
+        self._animating = True
+        diff = self._target - self._current
+        if abs(diff) < 0.005:
+            self._current = self._target
+            self._draw(self._current)
+            self._animating = False
+            return
+        self._current += diff * 0.15
+        self._draw(self._current)
+        self.after(16, self._animate)
+
+
+# ─────────────────────────────────────────────
+# STAT CARD (untuk dashboard) — animated
 # ─────────────────────────────────────────────
 class StatCard(ctk.CTkFrame):
     def __init__(self, master, title, value, icon, color, **kw):
         super().__init__(
-            master, fg_color=COLORS["bg_card"],
-            corner_radius=10, border_width=1,
-            border_color=COLORS["border"], **kw,
+            master,
+            fg_color=COLORS["bg_card"],
+            corner_radius=12,
+            border_width=1,
+            border_color=COLORS["border2"],
+            **kw,
         )
-        ctk.CTkLabel(self, text=icon, font=("Segoe UI Emoji", 22),
-                     text_color=color).pack(anchor="w", padx=14, pady=(12, 0))
+        # Top row: icon + title
+        top = ctk.CTkFrame(self, fg_color="transparent")
+        top.pack(fill="x", padx=14, pady=(12, 0))
+
+        self._icon_lbl = ctk.CTkLabel(top, text=icon,
+                                       font=("Segoe UI Emoji", 18),
+                                       text_color=color)
+        self._icon_lbl.pack(side="left")
+
+        ctk.CTkLabel(top, text=title, font=("Segoe UI", 10),
+                     text_color=COLORS["text_dim"]).pack(side="right", anchor="e")
+
+        # Value
         self.val_lbl = ctk.CTkLabel(
             self, text=value,
-            font=("Segoe UI", 18, "bold"),
+            font=("Segoe UI", 20, "bold"),
             text_color=COLORS["text_main"],
+            anchor="w",
         )
-        self.val_lbl.pack(anchor="w", padx=14)
-        ctk.CTkLabel(self, text=title, font=("Segoe UI", 11),
-                     text_color=COLORS["text_dim"]).pack(anchor="w", padx=14, pady=(0, 12))
+        self.val_lbl.pack(anchor="w", padx=14, pady=(4, 0))
 
-    def update_value(self, new_val: str):
+        # Progress bar
+        bar_frame = ctk.CTkFrame(self, fg_color="transparent")
+        bar_frame.pack(fill="x", padx=14, pady=(6, 12))
+        self._bar = AnimatedProgressBar(bar_frame, height=5)
+        self._bar.pack(fill="x")
+
+        self._color = color
+        self._pct   = 0.0
+
+    def update_value(self, new_val: str, pct: float = None):
         self.val_lbl.configure(text=new_val)
+        if pct is not None:
+            self._bar.set_value(pct)
+
 
 
 # ─────────────────────────────────────────────
@@ -192,79 +342,121 @@ class MultiToolApp(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title(f"MultiTool {VERSION}  –  by {AUTHOR}")
-        self.geometry("1100x680")
-        self.minsize(900, 560)
+        self.geometry("1160x720")
+        self.minsize(960, 600)
         self.configure(fg_color=COLORS["bg_dark"])
+
+        # Window icon
+        _set_icon(self)
+
+        try:
+            self.wm_attributes("-alpha", 1.0)
+        except Exception:
+            pass
 
         self._active_btn: SidebarBtn | None = None
         self._pages: dict[str, ctk.CTkFrame] = {}
         self._running_task = False
+        self._dot_anim_id  = None
 
         self._build_layout()
         self._show_page("dashboard")
 
     # ── layout skeleton ──────────────────────
     def _build_layout(self):
+        # Thin accent line at very top (like VSCode)
+        accent_bar = tk.Frame(self, bg=COLORS["accent"], height=2)
+        accent_bar.pack(side="top", fill="x")
+
+        body = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0)
+        body.pack(side="top", fill="both", expand=True)
+
         # Sidebar
         self.sidebar = ctk.CTkFrame(
-            self, width=210, fg_color=COLORS["bg_panel"],
+            body, width=220, fg_color=COLORS["bg_panel"],
             corner_radius=0,
         )
         self.sidebar.pack(side="left", fill="y")
         self.sidebar.pack_propagate(False)
 
+        # Separator line between sidebar and content
+        sep = tk.Frame(body, bg=COLORS["border"], width=1)
+        sep.pack(side="left", fill="y")
+
         # Content area
-        self.content = ctk.CTkFrame(self, fg_color=COLORS["bg_dark"], corner_radius=0)
+        self.content = ctk.CTkFrame(body, fg_color=COLORS["bg_dark"], corner_radius=0)
         self.content.pack(side="left", fill="both", expand=True)
 
         self._build_sidebar()
         self._build_pages()
 
     def _build_sidebar(self):
-        # Logo area
+        # Logo area with pulsing glow effect
         logo_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
-        logo_frame.pack(fill="x", pady=(16, 4), padx=10)
+        logo_frame.pack(fill="x", pady=(20, 6), padx=14)
+
+        logo_inner = ctk.CTkFrame(logo_frame,
+                                   fg_color=COLORS["bg_card"],
+                                   corner_radius=10,
+                                   border_width=1,
+                                   border_color=COLORS["accent_glow"])
+        logo_inner.pack(fill="x")
+
+        # Row: logo image (if available) + text
+        row = ctk.CTkFrame(logo_inner, fg_color="transparent")
+        row.pack(fill="x", padx=10, pady=(10, 2))
+
+        logo_img = _load_logo(size=(32, 32))
+        if logo_img:
+            ctk.CTkLabel(row, text="", image=logo_img,
+                         fg_color="transparent").pack(side="left", padx=(0, 8))
+
+        self._logo_lbl = ctk.CTkLabel(
+            row,
+            text="MultiTool",
+            font=("Segoe UI", 14, "bold"),
+            text_color=COLORS["accent"],
+        )
+        self._logo_lbl.pack(side="left", anchor="w")
 
         ctk.CTkLabel(
-            logo_frame,
-            text="⚡ MultiTool",
-            font=("Segoe UI", 16, "bold"),
-            text_color=COLORS["accent"],
-        ).pack(anchor="w")
-        ctk.CTkLabel(
-            logo_frame, text=f"by {AUTHOR}  {VERSION}",
-            font=("Segoe UI", 9), text_color=COLORS["text_dim"],
-        ).pack(anchor="w")
+            logo_inner, text=f"{AUTHOR}  ·  {VERSION}",
+            font=("Segoe UI", 9), text_color=COLORS["text_muted"],
+        ).pack(anchor="w", padx=12, pady=(0, 10))
+
+        # Start logo pulse animation
+        self._logo_pulse_state = 0
+        self._pulse_logo()
 
         ctk.CTkFrame(self.sidebar, height=1, fg_color=COLORS["border"]).pack(
-            fill="x", padx=10, pady=8
+            fill="x", padx=10, pady=(10, 6)
         )
 
         # Sections
         menus = [
             ("Dashboard",    "🏠",  "dashboard"),
-            ("─── POWER ──────────────", "", None),
+            ("─── POWER", "", None),
             ("Shutdown Timer",  "⏻",  "shutdown"),
             ("Restart Timer",   "🔄", "restart"),
             ("Lock PC",         "🔒", "lock"),
             ("Sleep/Hibernate", "💤", "sleep"),
-            ("─── INFO ───────────────", "", None),
+            ("─── INFO", "", None),
             ("System Info",     "💻", "sysinfo"),
             ("Disk Space",      "💾", "disk"),
             ("Battery",         "🔋", "battery"),
-            ("─── NETWORK ────────────", "", None),
+            ("─── NETWORK", "", None),
             ("Cek IP",          "🌐", "checkip"),
             ("IP Detail",       "🌍", "ipdetail"),
             ("Ping Test",       "📡", "ping"),
             ("Speed Test",      "🚀", "speedtest"),
             ("Flush DNS",       "🧹", "flushdns"),
-            ("─── PROSES ─────────────", "", None),
+            ("─── PROSES", "", None),
             ("Running Processes","📊", "processes"),
             ("Kill Process",    "💀", "kill"),
-            ("─── CLEANUP ────────────", "", None),
+            ("─── CLEANUP", "", None),
             ("Clean Temp",      "🗑️",  "cleantemp"),
             ("Disk Benchmark",  "⚡", "benchmark"),
-            ("─── SECURITY ───────────", "", None),
+            ("─── SECURITY", "", None),
             ("Firewall Status", "🛡️",  "firewall"),
             ("Open Ports",      "🔓", "ports"),
             ("WiFi Passwords",  "🔑", "wifipass"),
@@ -272,19 +464,41 @@ class MultiToolApp(ctk.CTk):
 
         self._btns: dict[str, SidebarBtn] = {}
         scroll = ctk.CTkScrollableFrame(
-            self.sidebar, fg_color="transparent", scrollbar_button_color=COLORS["border"]
+            self.sidebar, fg_color="transparent",
+            scrollbar_button_color=COLORS["border"],
+            scrollbar_button_hover_color=COLORS["border2"],
         )
-        scroll.pack(fill="both", expand=True, padx=4)
+        scroll.pack(fill="both", expand=True, padx=6)
+
+        # Smooth mousewheel scroll
+        self._smooth_scroll_vel  = 0.0
+        self._smooth_scroll_anim = False
+        self._scroll_frame_ref   = scroll
+
+        def on_scroll(event):
+            delta = -1 if (event.delta > 0 or event.num == 4) else 1
+            self._smooth_scroll_vel += delta * 0.04
+            if not self._smooth_scroll_anim:
+                self._smooth_scroll_tick()
+
+        scroll.bind("<MouseWheel>", on_scroll)
+        scroll.bind("<Button-4>",   on_scroll)
+        scroll.bind("<Button-5>",   on_scroll)
+        for child in scroll.winfo_children():
+            child.bind("<MouseWheel>", on_scroll)
+
 
         for label, icon, page_key in menus:
             if page_key is None:
-                # section divider label
+                # section header — clean minimal look
+                sec_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+                sec_frame.pack(fill="x", padx=4, pady=(12, 2))
                 ctk.CTkLabel(
-                    scroll, text=label,
+                    sec_frame, text=label,
                     font=("Segoe UI", 9, "bold"),
-                    text_color=COLORS["text_dim"],
+                    text_color=COLORS["text_muted"],
                     anchor="w",
-                ).pack(fill="x", padx=8, pady=(8, 0))
+                ).pack(fill="x")
                 continue
             btn = SidebarBtn(
                 scroll, text=label, icon=icon,
@@ -293,15 +507,53 @@ class MultiToolApp(ctk.CTk):
             btn.pack(fill="x", pady=1)
             self._btns[page_key] = btn
 
-        # Bottom info
+        # Bottom — social links
         ctk.CTkFrame(self.sidebar, height=1, fg_color=COLORS["border"]).pack(
-            fill="x", padx=10, pady=8
+            fill="x", padx=10, pady=(6, 6)
         )
+        bottom = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        bottom.pack(fill="x", padx=12, pady=(0, 12))
         ctk.CTkLabel(
-            self.sidebar, text=f"GitHub: {GITHUB}",
-            font=("Segoe UI", 8), text_color=COLORS["text_dim"],
-            wraplength=190, justify="left",
-        ).pack(anchor="w", padx=10, pady=(0, 6))
+            bottom, text="github.com/SOBING4413  ·  Exter Interactive",
+            font=("Segoe UI", 8), text_color=COLORS["text_muted"],
+            anchor="w",
+        ).pack(anchor="w")
+        ctk.CTkLabel(
+            bottom, text="discord.gg/9nsub2yx4V",
+            font=("Segoe UI", 8), text_color=COLORS["text_muted"],
+            anchor="w",
+        ).pack(anchor="w")
+
+    def _pulse_logo(self):
+        """Subtle pulsing border color on logo card."""
+        try:
+            colors = [COLORS["accent_glow"], "#15803d", "#166534", "#15803d"]
+            c = colors[self._logo_pulse_state % len(colors)]
+            # find logo inner frame and update border
+            logo_frame = self.sidebar.winfo_children()[0]
+            logo_inner = logo_frame.winfo_children()[0]
+            logo_inner.configure(border_color=c)
+            self._logo_pulse_state += 1
+            self.after(800, self._pulse_logo)
+        except Exception:
+            pass
+
+    def _smooth_scroll_tick(self):
+        """Inertia-based smooth scroll for sidebar."""
+        self._smooth_scroll_anim = True
+        try:
+            sf = self._scroll_frame_ref
+            # Get the internal scrollable canvas from CTkScrollableFrame
+            inner = sf._parent_canvas  # CTk internal
+            inner.yview_moveto(inner.yview()[0] + self._smooth_scroll_vel)
+        except Exception:
+            pass
+        self._smooth_scroll_vel *= 0.78  # friction
+        if abs(self._smooth_scroll_vel) > 0.001:
+            self.after(16, self._smooth_scroll_tick)
+        else:
+            self._smooth_scroll_vel = 0.0
+            self._smooth_scroll_anim = False
 
     # ── pages ────────────────────────────────
     def _build_pages(self):
@@ -333,70 +585,166 @@ class MultiToolApp(ctk.CTk):
     def _show_page(self, key: str):
         if key not in self._pages:
             return
+        # Hide all pages
         for p in self._pages.values():
             p.pack_forget()
-        self._pages[key].pack(fill="both", expand=True, padx=16, pady=16)
 
+        target = self._pages[key]
+        target.pack(fill="both", expand=True, padx=20, pady=20)
+
+        # Update sidebar state
         if self._active_btn:
             self._active_btn.set_active(False)
         if key in self._btns:
             self._btns[key].set_active(True)
             self._active_btn = self._btns[key]
 
+        # Smooth fade-in overlay animation
+        self._fade_in_page(target)
+
+    def _fade_in_page(self, frame: ctk.CTkFrame):
+        """Overlay a transparent canvas that fades from dark to clear."""
+        try:
+            overlay = tk.Canvas(self.content,
+                                 bg=COLORS["bg_dark"],
+                                 bd=0, highlightthickness=0)
+            overlay.place(relx=0, rely=0, relwidth=1, relheight=1)
+
+            step = [0]  # mutable for closure
+            total = 8
+
+            def tick():
+                step[0] += 1
+                if step[0] >= total:
+                    overlay.destroy()
+                    return
+                alpha_frac = step[0] / total          # 0→1
+                # Darken = high alpha at start, transparent at end
+                darkness = int(200 * (1 - alpha_frac))
+                r = int(8   * (1 - alpha_frac) + 8)
+                g = int(14  * (1 - alpha_frac) + 14)
+                b = int(9   * (1 - alpha_frac) + 9)
+                col = f"#{max(0,r):02x}{max(0,g):02x}{max(0,b):02x}"
+                # Resize canvas to match content area
+                w = self.content.winfo_width()
+                h = self.content.winfo_height()
+                overlay.configure(width=w, height=h, bg=col)
+                self.after(14, tick)
+
+            tick()
+        except Exception:
+            pass
+
     # ── PAGE: Dashboard ───────────────────────
     def _make_dashboard(self) -> ctk.CTkFrame:
         p = ctk.CTkFrame(self.content, fg_color="transparent")
 
-        # Title
+        # Header row: title + live clock
+        hdr = ctk.CTkFrame(p, fg_color="transparent")
+        hdr.pack(fill="x", pady=(0, 4))
+
+        left_hdr = ctk.CTkFrame(hdr, fg_color="transparent")
+        left_hdr.pack(side="left", fill="x", expand=True)
+
         ctk.CTkLabel(
-            p, text="Dashboard",
-            font=("Segoe UI", 22, "bold"),
+            left_hdr, text="Dashboard",
+            font=("Segoe UI", 24, "bold"),
             text_color=COLORS["text_main"],
-        ).pack(anchor="w", pady=(0, 4))
+        ).pack(anchor="w")
         ctk.CTkLabel(
-            p, text="Selamat datang di MultiTool – ringkasan sistem kamu",
+            left_hdr, text="Ringkasan sistem realtime",
             font=("Segoe UI", 12), text_color=COLORS["text_dim"],
-        ).pack(anchor="w", pady=(0, 16))
+        ).pack(anchor="w")
+
+        # Live clock label
+        self._clock_lbl = ctk.CTkLabel(
+            hdr, text="",
+            font=("Segoe UI", 11),
+            text_color=COLORS["text_muted"],
+        )
+        self._clock_lbl.pack(side="right", anchor="ne")
+        self._update_clock()
+
+        # Thin separator
+        ctk.CTkFrame(p, height=1, fg_color=COLORS["border"]).pack(fill="x", pady=(8, 16))
 
         # Stat cards grid
         cards_frame = ctk.CTkFrame(p, fg_color="transparent")
         cards_frame.pack(fill="x")
         cards_frame.columnconfigure((0, 1, 2, 3), weight=1)
 
-        self._card_cpu  = StatCard(cards_frame, "CPU Usage",    "–",   "🖥️",  COLORS["accent"])
-        self._card_ram  = StatCard(cards_frame, "RAM Usage",    "–",   "🧠", COLORS["accent2"])
-        self._card_disk = StatCard(cards_frame, "Disk C: Used", "–",   "💾", COLORS["accent4"])
-        self._card_bat  = StatCard(cards_frame, "Battery",      "–",   "🔋", COLORS["accent3"])
+        self._card_cpu  = StatCard(cards_frame, "CPU Usage",    "–", "🖥️",  COLORS["accent"])
+        self._card_ram  = StatCard(cards_frame, "RAM Usage",    "–", "🧠",  COLORS["accent2"])
+        self._card_disk = StatCard(cards_frame, "Disk C: Used", "–", "💾",  COLORS["accent4"])
+        self._card_bat  = StatCard(cards_frame, "Battery",      "–", "🔋",  COLORS["accent3"])
 
         for i, card in enumerate([self._card_cpu, self._card_ram, self._card_disk, self._card_bat]):
-            card.grid(row=0, column=i, padx=6, pady=0, sticky="nsew")
+            card.grid(row=0, column=i, padx=5, pady=0, sticky="nsew")
 
-        # Refresh button
-        ctk.CTkButton(
-            p, text="🔄  Refresh Stats",
+        # Refresh button — subtle style
+        btn_row = ctk.CTkFrame(p, fg_color="transparent")
+        btn_row.pack(fill="x", pady=(14, 0))
+
+        self._refresh_btn = ctk.CTkButton(
+            btn_row, text="↻  Refresh Stats",
             width=140, height=32,
-            fg_color=COLORS["bg_card"],
+            fg_color=COLORS["bg_card2"],
             hover_color=COLORS["bg_hover"],
             text_color=COLORS["accent"],
-            font=("Segoe UI", 12),
+            font=("Segoe UI", 11, "bold"),
             border_width=1,
-            border_color=COLORS["border"],
+            border_color=COLORS["border2"],
+            corner_radius=8,
             command=self._refresh_dashboard,
-        ).pack(anchor="w", pady=(12, 0))
+        )
+        self._refresh_btn.pack(side="left")
 
-        # System summary box
+        # Auto-refresh toggle
+        self._auto_refresh_var = ctk.BooleanVar(value=True)
+        ctk.CTkCheckBox(
+            btn_row, text="Auto refresh (30s)",
+            variable=self._auto_refresh_var,
+            font=("Segoe UI", 11),
+            text_color=COLORS["text_dim"],
+            fg_color=COLORS["accent_glow"],
+            hover_color=COLORS["accent"],
+            checkbox_width=16, checkbox_height=16,
+        ).pack(side="left", padx=14)
+
+        # Section title
+        sec = ctk.CTkFrame(p, fg_color="transparent")
+        sec.pack(fill="x", pady=(20, 8))
         ctk.CTkLabel(
-            p, text="System Summary",
+            sec, text="System Summary",
             font=("Segoe UI", 13, "bold"),
             text_color=COLORS["text_main"],
-        ).pack(anchor="w", pady=(20, 6))
+        ).pack(side="left")
 
         self._dash_out = OutputBox(p)
         self._dash_out.pack(fill="both", expand=True)
 
         # Auto-load
-        self.after(200, self._refresh_dashboard)
+        self.after(300, self._refresh_dashboard)
+        self._schedule_auto_refresh()
         return p
+
+    def _update_clock(self):
+        now = datetime.datetime.now().strftime("%a %d %b  %H:%M:%S")
+        try:
+            self._clock_lbl.configure(text=now)
+            self.after(1000, self._update_clock)
+        except Exception:
+            pass
+
+    def _schedule_auto_refresh(self):
+        def loop():
+            try:
+                if self._auto_refresh_var.get():
+                    self._refresh_dashboard()
+                self.after(30_000, loop)
+            except Exception:
+                pass
+        self.after(30_000, loop)
 
     def _refresh_dashboard(self):
         def task():
@@ -407,15 +755,20 @@ class MultiToolApp(ctk.CTk):
                 disk = psutil.disk_usage("C:\\" if is_windows() else "/")
                 bat  = psutil.sensors_battery()
 
-                self._card_cpu.update_value(f"{cpu:.1f}%")
+                self._card_cpu.update_value(f"{cpu:.1f}%", pct=cpu/100)
                 self._card_ram.update_value(
-                    f"{ram.used / 1e9:.1f} / {ram.total / 1e9:.1f} GB"
+                    f"{ram.used / 1e9:.1f} / {ram.total / 1e9:.1f} GB",
+                    pct=ram.percent/100,
                 )
                 self._card_disk.update_value(
-                    f"{disk.used / 1e9:.1f} / {disk.total / 1e9:.1f} GB"
+                    f"{disk.used / 1e9:.1f} / {disk.total / 1e9:.1f} GB",
+                    pct=disk.percent/100,
                 )
-                bat_txt = f"{bat.percent:.0f}% {'⚡' if bat.power_plugged else '🔋'}" if bat else "N/A"
-                self._card_bat.update_value(bat_txt)
+                if bat:
+                    bat_txt = f"{bat.percent:.0f}% {'⚡' if bat.power_plugged else '🔋'}"
+                    self._card_bat.update_value(bat_txt, pct=bat.percent/100)
+                else:
+                    self._card_bat.update_value("N/A", pct=0)
 
             # Summary
             self._dash_out.clear()
@@ -459,33 +812,40 @@ class MultiToolApp(ctk.CTk):
     def _make_output_page(self, title: str, run_fn) -> ctk.CTkFrame:
         p = ctk.CTkFrame(self.content, fg_color="transparent")
 
+        # Title row
+        title_lbl = ctk.CTkLabel(
+            p, text=title,
+            font=("Segoe UI", 18, "bold"),
+            text_color=COLORS["text_main"],
+        )
+        title_lbl.pack(anchor="w", pady=(0, 10))
+
+        ctk.CTkFrame(p, height=1, fg_color=COLORS["border"]).pack(fill="x", pady=(0, 12))
+
         header = ctk.CTkFrame(p, fg_color="transparent")
         header.pack(fill="x", pady=(0, 12))
 
-        ctk.CTkLabel(
-            header, text=title,
-            font=("Segoe UI", 18, "bold"),
-            text_color=COLORS["text_main"],
-        ).pack(side="left")
-
         btn_run = ctk.CTkButton(
             header, text="▶  Jalankan",
-            width=130, height=32,
-            fg_color=COLORS["accent"],
-            hover_color="#4493e0",
+            width=130, height=34,
+            fg_color=COLORS["accent_glow"],
+            hover_color=COLORS["accent"],
+            text_color="#ffffff",
             font=("Segoe UI", 12, "bold"),
+            corner_radius=8,
             command=lambda: self._threaded(run_fn, out, btn_run),
         )
         btn_run.pack(side="right")
 
         btn_clear = ctk.CTkButton(
             header, text="✕  Clear",
-            width=90, height=32,
+            width=90, height=34,
             fg_color=COLORS["bg_card"],
             hover_color=COLORS["bg_hover"],
             text_color=COLORS["text_dim"],
             border_width=1, border_color=COLORS["border"],
             font=("Segoe UI", 12),
+            corner_radius=8,
             command=lambda: out.clear(),
         )
         btn_clear.pack(side="right", padx=(0, 8))
@@ -510,8 +870,10 @@ class MultiToolApp(ctk.CTk):
             header, text="⚠️  Jalankan Sekarang",
             width=180, height=36,
             fg_color=COLORS["accent4"],
-            hover_color="#c08010",
+            hover_color="#b8960e",
+            text_color="#000000",
             font=("Segoe UI", 12, "bold"),
+            corner_radius=8,
             command=lambda: self._threaded(run_fn, out, btn_run),
         )
         btn_run.pack(side="left")
@@ -524,6 +886,7 @@ class MultiToolApp(ctk.CTk):
             text_color=COLORS["text_dim"],
             border_width=1, border_color=COLORS["border"],
             font=("Segoe UI", 12),
+            corner_radius=8,
             command=lambda: out.clear(),
         )
         btn_clear.pack(side="left", padx=(8, 0))
@@ -540,9 +903,10 @@ class MultiToolApp(ctk.CTk):
 
         ctk.CTkLabel(p, text=title,
                      font=("Segoe UI", 18, "bold"),
-                     text_color=COLORS["text_main"]).pack(anchor="w", pady=(0, 6))
+                     text_color=COLORS["text_main"]).pack(anchor="w", pady=(0, 4))
         ctk.CTkLabel(p, text="Jadwalkan shutdown/restart otomatis setelah waktu tertentu.",
-                     font=("Segoe UI", 12), text_color=COLORS["text_dim"]).pack(anchor="w", pady=(0, 20))
+                     font=("Segoe UI", 12), text_color=COLORS["text_dim"]).pack(anchor="w", pady=(0, 8))
+        ctk.CTkFrame(p, height=1, fg_color=COLORS["border"]).pack(fill="x", pady=(0, 16))
 
         row = ctk.CTkFrame(p, fg_color="transparent")
         row.pack(anchor="w")
@@ -551,7 +915,8 @@ class MultiToolApp(ctk.CTk):
                      text_color=COLORS["text_main"]).pack(side="left", padx=(0, 10))
         entry = ctk.CTkEntry(row, width=100, height=36,
                              fg_color=COLORS["bg_card"],
-                             border_color=COLORS["border"],
+                             border_color=COLORS["border2"],
+                             corner_radius=8,
                              font=("Segoe UI", 13))
         entry.pack(side="left")
         entry.insert(0, "30")
@@ -683,7 +1048,7 @@ class MultiToolApp(ctk.CTk):
             p, text="▶  Jalankan",
             width=140, height=36,
             fg_color=COLORS["accent"],
-            hover_color="#4493e0",
+            hover_color="#22c55e",
             font=("Segoe UI", 12, "bold"),
             command=do_sleep,
         ).pack(anchor="w")
@@ -729,7 +1094,7 @@ class MultiToolApp(ctk.CTk):
             row, text="▶  Ping",
             width=100, height=34,
             fg_color=COLORS["accent"],
-            hover_color="#4493e0",
+            hover_color="#22c55e",
             font=("Segoe UI", 12, "bold"),
             command=run,
         ).pack(side="left", padx=(10, 0))
@@ -808,7 +1173,7 @@ class MultiToolApp(ctk.CTk):
             row, text="🔍  Cari",
             width=100, height=34,
             fg_color=COLORS["accent"],
-            hover_color="#4493e0",
+            hover_color="#22c55e",
             font=("Segoe UI", 12, "bold"),
             command=search_and_kill,
         ).pack(side="left", padx=(10, 0))
@@ -818,13 +1183,40 @@ class MultiToolApp(ctk.CTk):
     # ── THREAD HELPER ─────────────────────────
     def _threaded(self, fn, out: OutputBox, btn: ctk.CTkButton):
         out.clear()
-        btn.configure(state="disabled", text="⏳  Running...")
+        btn.configure(state="disabled")
+        self._start_btn_anim(btn)
 
         def task():
             fn(out)
-            btn.configure(state="normal", text="▶  Jalankan")
+            self._stop_btn_anim(btn)
 
         threading.Thread(target=task, daemon=True).start()
+
+    def _start_btn_anim(self, btn: ctk.CTkButton):
+        """Animated loading dots on button."""
+        self._btn_anim_running = True
+        self._btn_anim_frame   = 0
+        frames = ["⠋ Running", "⠙ Running", "⠹ Running", "⠸ Running",
+                  "⠼ Running", "⠴ Running", "⠦ Running", "⠧ Running",
+                  "⠇ Running", "⠏ Running"]
+
+        def tick():
+            if not self._btn_anim_running:
+                return
+            try:
+                btn.configure(text=frames[self._btn_anim_frame % len(frames)])
+                self._btn_anim_frame += 1
+                self.after(80, tick)
+            except Exception:
+                pass
+        tick()
+
+    def _stop_btn_anim(self, btn: ctk.CTkButton):
+        self._btn_anim_running = False
+        try:
+            btn.configure(state="normal", text="▶  Jalankan")
+        except Exception:
+            pass
 
     # ─────────────────────────────────────────
     # RUN FUNCTIONS
@@ -1220,8 +1612,284 @@ class MultiToolApp(ctk.CTk):
 
 
 # ─────────────────────────────────────────────
+# SPLASH SCREEN
+# ─────────────────────────────────────────────
+class SplashScreen(tk.Tk):
+    """
+    Full-screen animated loading splash before main GUI.
+    Draws on a tk.Canvas with:
+      - Animated particle field (floating dots)
+      - Glowing title text animation
+      - Typing effect for subtitle
+      - Smooth progress bar with pulse
+      - Fade-out before launching main app
+    """
+
+    W, H = 720, 420
+    FPS  = 30
+
+    def __init__(self):
+        super().__init__()
+        self.overrideredirect(True)          # borderless
+        self.configure(bg="#080e09")
+        self.resizable(False, False)
+        self.attributes("-topmost", True)
+
+        # Center window
+        sw = self.winfo_screenwidth()
+        sh = self.winfo_screenheight()
+        x  = (sw - self.W) // 2
+        y  = (sh - self.H) // 2
+        self.geometry(f"{self.W}x{self.H}+{x}+{y}")
+
+        self.canvas = tk.Canvas(self, width=self.W, height=self.H,
+                                 bg="#080e09", bd=0, highlightthickness=0)
+        self.canvas.pack()
+
+        # Window icon
+        _set_icon(self)
+
+        # State
+        self._frame        = 0
+        self._progress     = 0.0      # 0.0 → 1.0
+        self._alpha        = 255      # for fade-out (canvas hack via wm alpha)
+        self._done         = False
+        self._typing_idx   = 0
+        self._typing_text  = "by Exter Interactive"
+        self._title_glow   = 0
+
+        # Particles: (x, y, vx, vy, radius, alpha_offset)
+        import random
+        rng = random.Random(42)
+        self._particles = [
+            [rng.randint(0, self.W), rng.randint(0, self.H),
+             rng.uniform(-0.4, 0.4), rng.uniform(-0.3, 0.3),
+             rng.randint(1, 3), rng.uniform(0, 6.28)]
+            for _ in range(55)
+        ]
+
+        # Loading steps
+        self._steps = [
+            (0.08,  "Initializing core modules..."),
+            (0.22,  "Loading system interfaces..."),
+            (0.38,  "Connecting to hardware sensors..."),
+            (0.55,  "Building UI components..."),
+            (0.70,  "Applying Exter design system..."),
+            (0.85,  "Preparing network tools..."),
+            (1.00,  "Launch!"),
+        ]
+        self._step_idx    = 0
+        self._step_label  = self._steps[0][1]
+
+        # Load logo for splash
+        self._splash_logo = _load_logo_tk(size=(72, 72))
+
+        self._tick()
+
+    # ── helpers ──────────────────────────────
+    @staticmethod
+    def _hex_color(r, g, b, a=255) -> str:
+        r = max(0, min(255, int(r)))
+        g = max(0, min(255, int(g)))
+        b = max(0, min(255, int(b)))
+        return f"#{r:02x}{g:02x}{b:02x}"
+
+    def _lerp_color(self, c1, c2, t):
+        def h(c): return (int(c[1:3],16), int(c[3:5],16), int(c[5:7],16))
+        r1,g1,b1 = h(c1); r2,g2,b2 = h(c2)
+        return self._hex_color(r1+(r2-r1)*t, g1+(g2-g1)*t, b1+(b2-b1)*t)
+
+    # ── main tick ────────────────────────────
+    def _tick(self):
+        if self._done:
+            return
+
+        self._frame += 1
+        dt = 1 / self.FPS
+
+        # Advance progress
+        target_prog = self._steps[min(self._step_idx, len(self._steps)-1)][0]
+        if self._progress < target_prog:
+            self._progress = min(self._progress + 0.008, target_prog)
+
+        # Advance step
+        if self._progress >= target_prog and self._step_idx < len(self._steps) - 1:
+            self._step_idx   += 1
+            self._step_label  = self._steps[self._step_idx][1]
+
+        # Typing effect for subtitle
+        full = self._typing_text
+        if self._typing_idx < len(full) and self._frame % 3 == 0:
+            self._typing_idx += 1
+
+        # Title glow pulse
+        import math
+        self._title_glow = (math.sin(self._frame * 0.08) + 1) / 2
+
+        # Launch when done
+        if self._progress >= 1.0 and self._frame > 80:
+            self._fade_out()
+            return
+
+        self._draw()
+        self.after(1000 // self.FPS, self._tick)
+
+    def _fade_out(self):
+        """Fade window alpha to 0, then destroy and launch main app."""
+        alpha = getattr(self, "_fade_alpha", 1.0)
+        alpha -= 0.07
+        if alpha <= 0:
+            self._done = True
+            self.destroy()
+            _launch_main()
+            return
+        self._fade_alpha = alpha
+        try:
+            self.attributes("-alpha", alpha)
+        except Exception:
+            pass
+        self.after(18, self._fade_out)
+
+    # ── draw frame ───────────────────────────
+    def _draw(self):
+        import math, random
+        c   = self.canvas
+        W, H = self.W, self.H
+        c.delete("all")
+
+        # ── Background gradient (faked with horizontal bands) ──
+        band_h = 4
+        for i in range(0, H, band_h):
+            t  = i / H
+            r  = int(8  + 6  * t)
+            g  = int(14 + 12 * t)
+            b  = int(9  + 8  * t)
+            col = self._hex_color(r, g, b)
+            c.create_rectangle(0, i, W, i + band_h, fill=col, outline="")
+
+        # ── Radial glow behind title ──
+        glow_r  = 180 + int(20 * self._title_glow)
+        glow_cx = W // 2
+        glow_cy = H // 2 - 40
+        for ri in range(glow_r, 0, -8):
+            alpha_t = (1 - ri / glow_r) * 0.15 * (0.6 + 0.4 * self._title_glow)
+            r = int(74  * alpha_t)
+            g = int(222 * alpha_t)
+            b = int(128 * alpha_t)
+            col = self._hex_color(8 + r, 14 + g, 9 + b)
+            c.create_oval(glow_cx - ri, glow_cy - ri,
+                          glow_cx + ri, glow_cy + ri,
+                          fill=col, outline="")
+
+        # ── Particles ──
+        for p in self._particles:
+            p[0] = (p[0] + p[2]) % W
+            p[1] = (p[1] + p[3]) % H
+            p[5] += 0.04
+            alpha_t = (math.sin(p[5]) + 1) / 2
+            ri  = p[4]
+            bright = int(40 + 80 * alpha_t)
+            col = self._hex_color(0, bright, int(bright * 0.6))
+            x, y = int(p[0]), int(p[1])
+            c.create_oval(x - ri, y - ri, x + ri, y + ri,
+                          fill=col, outline="")
+
+        # ── Horizontal scan line (moving) ──
+        scan_y = int((self._frame * 2.5) % H)
+        # scan line — use a very dark green instead of alpha
+        c.create_line(0, scan_y, W, scan_y, fill="#0f2a12", width=1)
+
+        # ── Corner brackets decoration ──
+        blen = 30
+        pad  = 18
+        bclr = "#22c55e"
+        # top-left
+        c.create_line(pad, pad+blen, pad, pad, pad+blen, pad, fill=bclr, width=2)
+        # top-right
+        c.create_line(W-pad-blen, pad, W-pad, pad, W-pad, pad+blen, fill=bclr, width=2)
+        # bottom-left
+        c.create_line(pad, H-pad-blen, pad, H-pad, pad+blen, H-pad, fill=bclr, width=2)
+        # bottom-right
+        c.create_line(W-pad-blen, H-pad, W-pad, H-pad, W-pad, H-pad-blen, fill=bclr, width=2)
+
+        # ── Logo image (above title) ──
+        if self._splash_logo:
+            logo_y = H // 2 - 115
+            c.create_image(W // 2, logo_y, image=self._splash_logo, anchor="center")
+
+        # ── Title ──
+        glow_brightness = int(180 + 75 * self._title_glow)
+        title_color = self._hex_color(0, glow_brightness, int(glow_brightness * 0.55))
+        c.create_text(W//2 + 2, H//2 - 62,   # shadow
+                      text="MULTI TOOLS",
+                      font=("Segoe UI", 38, "bold"),
+                      fill="#001a04", anchor="center")
+        c.create_text(W//2, H//2 - 64,
+                      text="MULTI TOOLS",
+                      font=("Segoe UI", 38, "bold"),
+                      fill=title_color, anchor="center")
+
+        # ── Subtitle typing ──
+        shown = self._typing_text[:self._typing_idx]
+        cursor = "▌" if self._frame % 16 < 8 else ""
+        c.create_text(W//2, H//2 - 20,
+                      text=shown + cursor,
+                      font=("Segoe UI", 14),
+                      fill="#2d8a4e" if len(shown) < len(self._typing_text) else "#4ade80",
+                      anchor="center")
+
+        # ── Progress bar track ──
+        bar_x1, bar_y  = 80, H//2 + 40
+        bar_x2, bar_h  = W - 80, 6
+        # track
+        c.create_rectangle(bar_x1, bar_y, bar_x2, bar_y + bar_h,
+                            fill="#1a2e1c", outline="")
+        # fill
+        fill_x = bar_x1 + int((bar_x2 - bar_x1) * self._progress)
+        if fill_x > bar_x1:
+            # gradient fill
+            seg_w = max(1, fill_x - bar_x1)
+            for xi in range(bar_x1, fill_x, 2):
+                t = (xi - bar_x1) / seg_w
+                r = int(22  + (74 - 22) * t)
+                g = int(197 + (222 - 197) * t)
+                b = int(88  + (128 - 88) * t)
+                col = self._hex_color(r, g, b)
+                c.create_rectangle(xi, bar_y, xi + 2, bar_y + bar_h,
+                                   fill=col, outline="")
+            # pulse glow at tip
+            pulse = 0.5 + 0.5 * math.sin(self._frame * 0.25)
+            tip_r = int(4 + 3 * pulse)
+            tc = self._hex_color(74, 222, 128)
+            c.create_oval(fill_x - tip_r, bar_y - tip_r + 3,
+                          fill_x + tip_r, bar_y + bar_h + tip_r - 3,
+                          fill=tc, outline="")
+        # progress percent
+        pct_txt = f"{int(self._progress * 100)}%"
+        c.create_text(W//2, bar_y + 22,
+                      text=self._step_label,
+                      font=("Segoe UI", 10),
+                      fill="#5d7a62", anchor="center")
+        c.create_text(bar_x2, bar_y - 14,
+                      text=pct_txt,
+                      font=("Segoe UI", 10, "bold"),
+                      fill="#4ade80", anchor="e")
+
+        # ── Version tag ──
+        c.create_text(W//2, H - 28,
+                      text="v2.1.0  ·  Exter Interactive",
+                      font=("Segoe UI", 9),
+                      fill="#2e4030", anchor="center")
+
+
+# ─────────────────────────────────────────────
 # ENTRY POINT
 # ─────────────────────────────────────────────
-if __name__ == "__main__":
+def _launch_main():
     app = MultiToolApp()
     app.mainloop()
+
+
+if __name__ == "__main__":
+    splash = SplashScreen()
+    splash.mainloop()
