@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🛠️ MultiTool Utility v2.0
+# 🛠️ MultiTool Utility v2.1.0
 
 ### All-in-one utility to simplify your digital life
 
@@ -191,7 +191,7 @@ Cukup double-click salah satu file berikut:
   └──────────────────────────────────────────────────────────────┘
 
   ╔══════════════════════════════════════════════════════════════╗
-  ║              ◆ MULTITOOL v2.0 By.Sobing4413                  ║
+  ║              ◆ MULTITOOL v2.1.0 By.Sobing4413                  ║
   ╚══════════════════════════════════════════════════════════════╝
 
   ┌─ ⚡ POWER & SYSTEM ─────────────────────────────────────────┐
@@ -337,7 +337,7 @@ Kontribusi sangat diterima! Berikut cara berkontribusi:
 
 ## 📝 Changelog
 
-### v2.0 (Initial Rease)
+### v2.1.0 (Initial Rease)
 - ✅ 42+ fitur lengkap
 - ✅ UI terminal profesional dengan animasi
 - ✅ 18 bhasa
