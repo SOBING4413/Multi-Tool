@@ -124,6 +124,42 @@ def is_windows() -> bool:
     return platform.system() == "Windows"
 
 
+def _measure_download_speed(test_urls, timeout=25):
+    """Return tuple (ok, message_lines, mbps)."""
+    if not req_lib:
+        return False, ["requests tidak tersedia."], 0.0
+
+    headers = {"User-Agent": "MultiTool/2.1.0 (+speedtest)"}
+    for url in test_urls:
+        server = url.split("/")[2]
+        lines = [f"  Mencoba server: {server}..."]
+        try:
+            t0 = time.time()
+            r = req_lib.get(url, timeout=timeout, stream=True, headers=headers)
+            if r.status_code != 200:
+                lines.append(f"  Status {r.status_code}, skip.")
+                continue
+            total = 0
+            for chunk in r.iter_content(65536):
+                if chunk:
+                    total += len(chunk)
+            elapsed = max(time.time() - t0, 0.001)
+            if total < 1_000_000:
+                lines.append("  Data terlalu kecil untuk pengukuran valid, skip.")
+                continue
+            mbps = (total * 8) / (elapsed * 1_000_000)
+            lines.extend([
+                f"  ✅ Download selesai dari {server}",
+                f"  Ukuran   : {total / (1024**2):.2f} MB",
+                f"  Waktu    : {elapsed:.2f} detik",
+                f"  Kecepatan: {mbps:.2f} Mbps",
+            ])
+            return True, lines, mbps
+        except Exception:
+            lines.append(f"  Server {server} gagal.")
+    return False, ["  Semua server gagal."], 0.0
+
+
 # ─────────────────────────────────────────────
 # OUTPUT BOX HELPER
 # ─────────────────────────────────────────────
@@ -1442,39 +1478,25 @@ class MultiToolApp(ctk.CTk):
             return
 
         test_urls = [
-            ("https://speed.hetzner.de/10MB.bin", 10),
-            ("http://speedtest.tele2.net/10MB.zip", 10),
-            ("http://ipv4.download.thinkbroadband.com/10MB.zip", 10),
+            "https://proof.ovh.net/files/10Mb.dat",
+            "https://speed.hetzner.de/10MB.bin",
+            "https://bouygues.testdebit.info/10M.iso",
         ]
-
-        for url, mb in test_urls:
-            server = url.split("/")[2]
-            out.println(f"\n  Mencoba server: {server}...", "dim")
-            try:
-                t0 = time.time()
-                r = req_lib.get(url, timeout=25, stream=True)
-                if r.status_code != 200:
-                    out.println(f"  Status {r.status_code}, skip.", "warning")
-                    continue
-                total = 0
-                for chunk in r.iter_content(8192):
-                    total += len(chunk)
-                elapsed = time.time() - t0
-                if total < 1000:
-                    continue
-                mbps  = (total * 8) / (elapsed * 1e6)
-                mbs   = total / (elapsed * 1e6)
-                out.println(f"\n  ✅  Download selesai dari {server}", "success")
-                out.println(f"  Ukuran   : {total / 1e6:.2f} MB", "normal")
-                out.println(f"  Waktu    : {elapsed:.2f} detik", "normal")
-                out.println(f"  Kecepatan: {mbps:.2f} Mbps ({mbs:.2f} MB/s)", "success" if mbps > 10 else "warning")
-                if   mbps > 100: out.println("\n  🔥 SANGAT CEPAT!", "success")
-                elif mbps > 50:  out.println("\n  ⚡ CEPAT!", "success")
-                elif mbps > 10:  out.println("\n  👍 NORMAL", "normal")
-                else:            out.println("\n  🐌 LAMBAT", "warning")
-                break
-            except Exception:
-                out.println(f"  Server {server} gagal.", "warning")
+        ok, lines, mbps = _measure_download_speed(test_urls, timeout=30)
+        for line in lines:
+            tag = "success" if "✅" in line else ("warning" if "gagal" in line or "skip" in line else "dim")
+            out.println(f"\n{line}" if line.startswith("  Mencoba") else line, tag)
+        if ok:
+            if mbps > 100:
+                out.println("\n  🔥 SANGAT CEPAT!", "success")
+            elif mbps > 50:
+                out.println("\n  ⚡ CEPAT!", "success")
+            elif mbps > 10:
+                out.println("\n  👍 NORMAL", "normal")
+            else:
+                out.println("\n  🐌 LAMBAT", "warning")
+        else:
+            out.println("\n  ❌ Speed test gagal: semua server tidak merespons dengan baik.", "error")
 
         out.println("\n" + "═" * 60, "dim")
 

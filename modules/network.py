@@ -431,19 +431,19 @@ def speed_test():
 
     # Multiple test URLs for reliability - diurutkan dari yang paling reliable
     test_urls = [
-        ("https://speed.hetzner.de/10MB.bin", 10),
-        ("http://speedtest.tele2.net/10MB.zip", 10),
-        ("http://ipv4.download.thinkbroadband.com/10MB.zip", 10),
-        ("https://proof.ovh.net/files/10Mb.dat", 10),
+        "https://proof.ovh.net/files/10Mb.dat",
+        "https://speed.hetzner.de/10MB.bin",
+        "https://bouygues.testdebit.info/10M.iso",
     ]
 
     success = False
-    for test_url, expected_mb in test_urls:
+    headers = {"User-Agent": "MultiTool/2.1.0 (+speedtest)"}
+    for test_url in test_urls:
         try:
             server_name = test_url.split('/')[2]
             print_info(f"Mencoba server: {server_name}...")
             start = time.time()
-            response = req_lib.get(test_url, timeout=30, stream=True)
+            response = req_lib.get(test_url, timeout=30, stream=True, headers=headers)
 
             # Cek HTTP status
             if response.status_code != 200:
@@ -451,8 +451,9 @@ def speed_test():
                 continue
 
             total_bytes = 0
-            for chunk in response.iter_content(chunk_size=8192):
-                total_bytes += len(chunk)
+            for chunk in response.iter_content(chunk_size=65536):
+                if chunk:
+                    total_bytes += len(chunk)
             elapsed = time.time() - start
 
             if total_bytes < 1000:
