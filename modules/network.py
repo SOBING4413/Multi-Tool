@@ -5,7 +5,6 @@ Fitur: Cek IP, IP Real Detail, Flush DNS, Ping, Traceroute, Info Jaringan,
 """
 
 import os
-import re
 import time
 import socket
 import subprocess
@@ -18,7 +17,7 @@ from utils.ui import (
     get_color, get_accent, get_input, pause, print_section, print_divider,
     print_key_value, loading_animation, print_menu_item,
 )
-from utils.helpers import run_command, is_windows
+from utils.helpers import run_command, is_windows, sanitize_host
 
 try:
     import requests as req_lib
@@ -29,21 +28,6 @@ try:
     from prettytable import PrettyTable
 except ImportError:
     PrettyTable = None
-
-
-def _sanitize_host(host_input):
-    """Sanitasi input hostname/IP untuk mencegah command injection.
-    Hanya mengizinkan karakter alfanumerik, titik, strip, dan titik dua (IPv6).
-    Returns sanitized string atau None jika tidak valid.
-    """
-    host = host_input.strip()
-    if not host:
-        return None
-    # Hanya izinkan karakter yang valid untuk hostname/IP
-    # a-z, A-Z, 0-9, ., -, : (untuk IPv6)
-    if re.match(r'^[a-zA-Z0-9.\-:]+$', host):
-        return host
-    return None
 
 
 def check_ip():
@@ -175,7 +159,7 @@ def traceroute():
     print_header("🔀 TRACEROUTE")
 
     target = get_input("Masukkan IP/Domain (contoh: google.com): ")
-    target = _sanitize_host(target)
+    target = sanitize_host(target)
     if not target:
         print_error("Input tidak valid! Hanya huruf, angka, titik, dan strip yang diizinkan.")
         pause()
@@ -251,7 +235,7 @@ def ping_test():
 
     if choice == "3":
         raw_target = get_input("Masukkan IP/Domain: ")
-        target = _sanitize_host(raw_target)
+        target = sanitize_host(raw_target)
         if not target:
             print_error("Input tidak valid! Hanya huruf, angka, titik, dan strip yang diizinkan.")
             pause()
@@ -522,7 +506,7 @@ def dns_lookup():
     print_header("🔍 DNS LOOKUP")
 
     domain = get_input("Masukkan domain (contoh: google.com): ")
-    domain = _sanitize_host(domain)
+    domain = sanitize_host(domain)
     if not domain:
         print_error("Input tidak valid! Hanya huruf, angka, titik, dan strip yang diizinkan.")
         pause()
