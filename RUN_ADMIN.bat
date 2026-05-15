@@ -2,7 +2,7 @@
 :: Batch file ini akan menjalankan MultiTool sebagai Administrator
 :: Berguna untuk fitur yang membutuhkan akses admin (WiFi, Firewall, dll)
 
-title MultiTool Utility v1.0 - Admin Launcher
+title MultiTool Utility v2.1.0 - Admin Launcher
 
 :: Cek apakah sudah admin
 net session >nul 2>&1
@@ -19,7 +19,7 @@ color 0A
 echo.
 echo  ╔════════════════════════════════════════════════════════════════╗
 echo  ║                                                                ║
-echo  ║        MULTI TOOL By.Sobing4413 v1.0 - ADMIN LAUNCHER         ║
+echo  ║        MULTI TOOL By.Sobing4413 v2.1.0 - ADMIN LAUNCHER         ║
 echo  ║               Berjalan sebagai Administrator                   ║
 echo  ║                                                                ║
 echo  ║   GitHub  : https://github.com/SOBING4413                     ║
@@ -50,7 +50,7 @@ if %errorlevel% neq 0 (
     echo.
 )
 
-echo  [*] Menjalankan MultiTool v1.0...
+echo  [*] Menjalankan MultiTool v2.1.0...
 echo.
 
 python multitool.py
