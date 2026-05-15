@@ -698,6 +698,19 @@ class MultiToolApp(ctk.CTk):
             command=self._refresh_dashboard,
         )
         self._refresh_btn.pack(side="left")
+        self._report_btn = ctk.CTkButton(
+            btn_row, text="📝  Generate Health Report",
+            width=210, height=32,
+            fg_color=COLORS["bg_card2"],
+            hover_color=COLORS["bg_hover"],
+            text_color=COLORS["accent2"],
+            font=("Segoe UI", 11, "bold"),
+            border_width=1,
+            border_color=COLORS["border2"],
+            corner_radius=8,
+            command=self._generate_health_report,
+        )
+        self._report_btn.pack(side="left", padx=(8, 0))
 
         # Auto-refresh toggle
         self._auto_refresh_var = ctk.BooleanVar(value=True)
@@ -807,6 +820,60 @@ class MultiToolApp(ctk.CTk):
                     out.println(f"  {i}. {pr.info['name'][:30]:<30}  {ram_mb:>8.1f} MB", "normal")
             out.separator("═")
         threading.Thread(target=task, daemon=True).start()
+
+    def _generate_health_report(self):
+        """Buat file laporan kesehatan sistem."""
+        try:
+            reports_dir = os.path.join(_BASE_DIR, "reports")
+            os.makedirs(reports_dir, exist_ok=True)
+            stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            file_path = os.path.join(reports_dir, f"health_report_{stamp}.txt")
+
+            lines = [
+                "MULTITOOL SYSTEM HEALTH REPORT",
+                "=" * 42,
+                f"Generated : {datetime.datetime.now().isoformat(sep=' ', timespec='seconds')}",
+                f"Hostname  : {socket.gethostname()}",
+                f"OS        : {platform.platform()}",
+                f"Python    : {platform.python_version()}",
+                "",
+            ]
+            if psutil:
+                cpu = psutil.cpu_percent(interval=0.5)
+                ram = psutil.virtual_memory()
+                disk = psutil.disk_usage("C:\\" if is_windows() else "/")
+                uptime = str(datetime.timedelta(seconds=int(time.time() - psutil.boot_time())))
+                lines += [
+                    "RESOURCE USAGE",
+                    "-" * 42,
+                    f"CPU       : {cpu:.1f}%",
+                    f"RAM       : {ram.percent:.1f}% ({ram.used / 1e9:.2f}/{ram.total / 1e9:.2f} GB)",
+                    f"DISK      : {disk.percent:.1f}% ({disk.used / 1e9:.2f}/{disk.total / 1e9:.2f} GB)",
+                    f"Uptime    : {uptime}",
+                    "",
+                    "TOP 5 PROCESSES BY RAM",
+                    "-" * 42,
+                ]
+                procs = sorted(
+                    psutil.process_iter(["pid", "name", "memory_info"]),
+                    key=lambda p: p.info["memory_info"].rss if p.info["memory_info"] else 0,
+                    reverse=True,
+                )[:5]
+                for pr in procs:
+                    if not pr.info["memory_info"]:
+                        continue
+                    rss_mb = pr.info["memory_info"].rss / (1024 ** 2)
+                    name = str(pr.info["name"] or "unknown")[:30]
+                    lines.append(f"PID {pr.info['pid']:>6} | {name:<30} | {rss_mb:8.1f} MB")
+            else:
+                lines.append("psutil tidak tersedia. Install dependency untuk detail report.")
+
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write("\n".join(lines) + "\n")
+
+            messagebox.showinfo("Report Generated", f"Laporan berhasil dibuat:\n{file_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Gagal membuat report:\n{e}")
 
     # ── PAGE FACTORY: generic output ─────────
     def _make_output_page(self, title: str, run_fn) -> ctk.CTkFrame:
