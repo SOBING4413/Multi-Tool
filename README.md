@@ -67,6 +67,7 @@
    ```bash
    pip install -r requirements.txt
    ```
+   > Untuk mode GUI, dependensi `customtkinter` dan `pillow` sudah termasuk di `requirements.txt`.
 
 3. **Jalankan program:**
    ```bash
@@ -161,6 +162,7 @@ Cukup double-click salah satu file berikut:
 |---|-------|-----------|
 | 41 | Settings | Ubah tema warna dan toggle animasi |
 | 42 | Change Language | Ganti bahasa (18 bahasa tersedia) |
+| 43 | Dashboard Health Report (GUI) | Export laporan kesehatan sistem ke file `.txt` |
 
 ---
 

@@ -124,6 +124,42 @@ def is_windows() -> bool:
     return platform.system() == "Windows"
 
 
+def _measure_download_speed(test_urls, timeout=25):
+    """Return tuple (ok, message_lines, mbps)."""
+    if not req_lib:
+        return False, ["requests tidak tersedia."], 0.0
+
+    headers = {"User-Agent": "MultiTool/2.1.0 (+speedtest)"}
+    for url in test_urls:
+        server = url.split("/")[2]
+        lines = [f"  Mencoba server: {server}..."]
+        try:
+            t0 = time.time()
+            r = req_lib.get(url, timeout=timeout, stream=True, headers=headers)
+            if r.status_code != 200:
+                lines.append(f"  Status {r.status_code}, skip.")
+                continue
+            total = 0
+            for chunk in r.iter_content(65536):
+                if chunk:
+                    total += len(chunk)
+            elapsed = max(time.time() - t0, 0.001)
+            if total < 1_000_000:
+                lines.append("  Data terlalu kecil untuk pengukuran valid, skip.")
+                continue
+            mbps = (total * 8) / (elapsed * 1_000_000)
+            lines.extend([
+                f"  ✅ Download selesai dari {server}",
+                f"  Ukuran   : {total / (1024**2):.2f} MB",
+                f"  Waktu    : {elapsed:.2f} detik",
+                f"  Kecepatan: {mbps:.2f} Mbps",
+            ])
+            return True, lines, mbps
+        except Exception:
+            lines.append(f"  Server {server} gagal.")
+    return False, ["  Semua server gagal."], 0.0
+
+
 # ─────────────────────────────────────────────
 # OUTPUT BOX HELPER
 # ─────────────────────────────────────────────
@@ -698,6 +734,19 @@ class MultiToolApp(ctk.CTk):
             command=self._refresh_dashboard,
         )
         self._refresh_btn.pack(side="left")
+        self._report_btn = ctk.CTkButton(
+            btn_row, text="📝  Generate Health Report",
+            width=210, height=32,
+            fg_color=COLORS["bg_card2"],
+            hover_color=COLORS["bg_hover"],
+            text_color=COLORS["accent2"],
+            font=("Segoe UI", 11, "bold"),
+            border_width=1,
+            border_color=COLORS["border2"],
+            corner_radius=8,
+            command=self._generate_health_report,
+        )
+        self._report_btn.pack(side="left", padx=(8, 0))
 
         # Auto-refresh toggle
         self._auto_refresh_var = ctk.BooleanVar(value=True)
@@ -807,6 +856,60 @@ class MultiToolApp(ctk.CTk):
                     out.println(f"  {i}. {pr.info['name'][:30]:<30}  {ram_mb:>8.1f} MB", "normal")
             out.separator("═")
         threading.Thread(target=task, daemon=True).start()
+
+    def _generate_health_report(self):
+        """Buat file laporan kesehatan sistem."""
+        try:
+            reports_dir = os.path.join(_BASE_DIR, "reports")
+            os.makedirs(reports_dir, exist_ok=True)
+            stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            file_path = os.path.join(reports_dir, f"health_report_{stamp}.txt")
+
+            lines = [
+                "MULTITOOL SYSTEM HEALTH REPORT",
+                "=" * 42,
+                f"Generated : {datetime.datetime.now().isoformat(sep=' ', timespec='seconds')}",
+                f"Hostname  : {socket.gethostname()}",
+                f"OS        : {platform.platform()}",
+                f"Python    : {platform.python_version()}",
+                "",
+            ]
+            if psutil:
+                cpu = psutil.cpu_percent(interval=0.5)
+                ram = psutil.virtual_memory()
+                disk = psutil.disk_usage("C:\\" if is_windows() else "/")
+                uptime = str(datetime.timedelta(seconds=int(time.time() - psutil.boot_time())))
+                lines += [
+                    "RESOURCE USAGE",
+                    "-" * 42,
+                    f"CPU       : {cpu:.1f}%",
+                    f"RAM       : {ram.percent:.1f}% ({ram.used / 1e9:.2f}/{ram.total / 1e9:.2f} GB)",
+                    f"DISK      : {disk.percent:.1f}% ({disk.used / 1e9:.2f}/{disk.total / 1e9:.2f} GB)",
+                    f"Uptime    : {uptime}",
+                    "",
+                    "TOP 5 PROCESSES BY RAM",
+                    "-" * 42,
+                ]
+                procs = sorted(
+                    psutil.process_iter(["pid", "name", "memory_info"]),
+                    key=lambda p: p.info["memory_info"].rss if p.info["memory_info"] else 0,
+                    reverse=True,
+                )[:5]
+                for pr in procs:
+                    if not pr.info["memory_info"]:
+                        continue
+                    rss_mb = pr.info["memory_info"].rss / (1024 ** 2)
+                    name = str(pr.info["name"] or "unknown")[:30]
+                    lines.append(f"PID {pr.info['pid']:>6} | {name:<30} | {rss_mb:8.1f} MB")
+            else:
+                lines.append("psutil tidak tersedia. Install dependency untuk detail report.")
+
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write("\n".join(lines) + "\n")
+
+            messagebox.showinfo("Report Generated", f"Laporan berhasil dibuat:\n{file_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Gagal membuat report:\n{e}")
 
     # ── PAGE FACTORY: generic output ─────────
     def _make_output_page(self, title: str, run_fn) -> ctk.CTkFrame:
@@ -1375,39 +1478,25 @@ class MultiToolApp(ctk.CTk):
             return
 
         test_urls = [
-            ("https://speed.hetzner.de/10MB.bin", 10),
-            ("http://speedtest.tele2.net/10MB.zip", 10),
-            ("http://ipv4.download.thinkbroadband.com/10MB.zip", 10),
+            "https://proof.ovh.net/files/10Mb.dat",
+            "https://speed.hetzner.de/10MB.bin",
+            "https://bouygues.testdebit.info/10M.iso",
         ]
-
-        for url, mb in test_urls:
-            server = url.split("/")[2]
-            out.println(f"\n  Mencoba server: {server}...", "dim")
-            try:
-                t0 = time.time()
-                r = req_lib.get(url, timeout=25, stream=True)
-                if r.status_code != 200:
-                    out.println(f"  Status {r.status_code}, skip.", "warning")
-                    continue
-                total = 0
-                for chunk in r.iter_content(8192):
-                    total += len(chunk)
-                elapsed = time.time() - t0
-                if total < 1000:
-                    continue
-                mbps  = (total * 8) / (elapsed * 1e6)
-                mbs   = total / (elapsed * 1e6)
-                out.println(f"\n  ✅  Download selesai dari {server}", "success")
-                out.println(f"  Ukuran   : {total / 1e6:.2f} MB", "normal")
-                out.println(f"  Waktu    : {elapsed:.2f} detik", "normal")
-                out.println(f"  Kecepatan: {mbps:.2f} Mbps ({mbs:.2f} MB/s)", "success" if mbps > 10 else "warning")
-                if   mbps > 100: out.println("\n  🔥 SANGAT CEPAT!", "success")
-                elif mbps > 50:  out.println("\n  ⚡ CEPAT!", "success")
-                elif mbps > 10:  out.println("\n  👍 NORMAL", "normal")
-                else:            out.println("\n  🐌 LAMBAT", "warning")
-                break
-            except Exception:
-                out.println(f"  Server {server} gagal.", "warning")
+        ok, lines, mbps = _measure_download_speed(test_urls, timeout=30)
+        for line in lines:
+            tag = "success" if "✅" in line else ("warning" if "gagal" in line or "skip" in line else "dim")
+            out.println(f"\n{line}" if line.startswith("  Mencoba") else line, tag)
+        if ok:
+            if mbps > 100:
+                out.println("\n  🔥 SANGAT CEPAT!", "success")
+            elif mbps > 50:
+                out.println("\n  ⚡ CEPAT!", "success")
+            elif mbps > 10:
+                out.println("\n  👍 NORMAL", "normal")
+            else:
+                out.println("\n  🐌 LAMBAT", "warning")
+        else:
+            out.println("\n  ❌ Speed test gagal: semua server tidak merespons dengan baik.", "error")
 
         out.println("\n" + "═" * 60, "dim")
 
