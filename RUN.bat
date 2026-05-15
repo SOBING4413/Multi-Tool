@@ -1,12 +1,12 @@
 @echo off
-title MultiTool Utility v1.0 - Launcher
+title MultiTool Utility v2.1.0 - Launcher
 color 0A
 cd /d "%~dp0"
 
 echo.
 echo  ╔════════════════════════════════════════════════════════════════╗
 echo  ║                                                                ║
-echo  ║            MULTI TOOL By.Sobing4413 v1.0 - LAUNCHER            ║
+echo  ║            MULTI TOOL By.Sobing4413 v2.1.0 - LAUNCHER            ║
 echo  ║     Program serbaguna untuk mempermudah hidupmu yang ribet     ║
 echo  ║                                                                ║
 echo  ║   GitHub  : https://github.com/SOBING4413                      ║
@@ -51,7 +51,7 @@ if %errorlevel% neq 0 (
 
 echo  [+] Semua dependencies tersedia.
 echo.
-echo  [*] Menjalankan MultiTool v1.0...
+echo  [*] Menjalankan MultiTool v2.1.0...
 echo.
 
 :: Jalankan program utama
